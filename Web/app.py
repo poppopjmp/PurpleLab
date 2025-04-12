@@ -8,7 +8,9 @@ from logging.handlers import RotatingFileHandler
 import shlex
 from datetime import datetime
 from werkzeug.utils import secure_filename
-
+from pyVim.connect import SmartConnect, Disconnect
+from pyVmomi import vim
+import ssl
 
 app = Flask(__name__)
 
@@ -26,6 +28,15 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 app.config['UPLOAD_FOLDER'] = '/var/www/html/Downloaded/upload/' 
 jwt = JWTManager(app)
 
+# vCenter connection details
+VCENTER_HOST = 'your_vcenter_host'
+VCENTER_USER = 'your_vcenter_user'
+VCENTER_PASSWORD = 'your_vcenter_password'
+
+def connect_to_vcenter():
+    context = ssl._create_unverified_context()
+    si = SmartConnect(host=VCENTER_HOST, user=VCENTER_USER, pwd=VCENTER_PASSWORD, sslContext=context)
+    return si
 
 @app.before_request
 def log_request_info():
@@ -627,6 +638,75 @@ def execute_payload():
             "stderr": e.stderr
         }), 500
 
+@app.route('/vcenter_vms', methods=['GET'])
+@cross_origin()
+def list_vcenter_vms():
+    try:
+        si = connect_to_vcenter()
+        content = si.RetrieveContent()
+        container = content.viewManager.CreateContainerView(content.rootFolder, [vim.VirtualMachine], True)
+        vms = container.view
+        vm_list = [{"name": vm.name, "power_state": vm.runtime.powerState} for vm in vms]
+        Disconnect(si)
+        return jsonify(vm_list), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/vcenter_vm_power', methods=['POST'])
+@cross_origin()
+def vcenter_vm_power():
+    data = request.json
+    vm_name = data.get('vm_name')
+    action = data.get('action')
+
+    if not vm_name or action not in ['poweron', 'poweroff', 'reset']:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    try:
+        si = connect_to_vcenter()
+        content = si.RetrieveContent()
+        container = content.viewManager.CreateContainerView(content.rootFolder, [vim.VirtualMachine], True)
+        vms = container.view
+        vm = next((vm for vm in vms if vm.name == vm_name), None)
+
+        if not vm:
+            return jsonify({"error": "VM not found"}), 404
+
+        if action == 'poweron':
+            vm.PowerOn()
+        elif action == 'poweroff':
+            vm.PowerOff()
+        elif action == 'reset':
+            vm.Reset()
+
+        Disconnect(si)
+        return jsonify({"message": f"VM {action} action completed successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/vcenter_vm_ip', methods=['GET'])
+@cross_origin()
+def vcenter_vm_ip():
+    vm_name = request.args.get('vm_name')
+
+    if not vm_name:
+        return jsonify({"error": "Missing vm_name parameter"}), 400
+
+    try:
+        si = connect_to_vcenter()
+        content = si.RetrieveContent()
+        container = content.viewManager.CreateContainerView(content.rootFolder, [vim.VirtualMachine], True)
+        vms = container.view
+        vm = next((vm for vm in vms if vm.name == vm_name), None)
+
+        if not vm:
+            return jsonify({"error": "VM not found"}), 404
+
+        ip_address = vm.guest.ipAddress
+        Disconnect(si)
+        return jsonify({"ip_address": ip_address}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

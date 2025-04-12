@@ -13,6 +13,8 @@
                 - [Accounts](#Accounts)
                 - [ELK Configuration](#ELK-Configuration)
                 - [VM logs configuration](#VM-logs-configuration)
+                - [Terraform Setup](#Terraform-Setup)
+                - [vCenter Configuration](#vCenter-Configuration)
 - [Usage](#Usage)
 	- [Home Page](#home-page-)
 	- [Hunting Page](#hunting-page-)
@@ -184,6 +186,43 @@ sudo VBoxManage snapshot "sandbox" take "Snapshot1" --description "snapshot befo
 
 > ⚠️ After that, and once you've finished configuring the elastic search server, check if the service is running, go to kibana (Hunting page on Purplelab), click on the Discover tab, normally, you will see the Windows event from the VM. 
 Indicators in the home page  should be fed
+
+### Terraform Setup
+
+1. Install Terraform:
+```bash
+sudo apt-get update && sudo apt-get install -y terraform
+```
+
+2. Initialize Terraform:
+```bash
+cd terraform
+terraform init
+```
+
+3. Apply the Terraform configuration:
+```bash
+terraform apply
+```
+
+### vCenter Configuration
+
+1. Ensure you have the necessary vCenter credentials and information:
+   - vSphere user
+   - vSphere password
+   - vSphere server
+   - vSphere datacenter
+   - vSphere datastore
+   - vSphere compute cluster
+   - vSphere network
+   - vSphere template
+
+2. Update the `terraform/variables.tf` file with your vCenter credentials and information.
+
+3. Deploy the infrastructure using Terraform:
+```bash
+terraform apply
+```
 
 # Usage
 

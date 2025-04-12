@@ -506,6 +506,43 @@ sigma plugin install splunk
     sudo mkdir /var/www/html/config/
     sudo chmod 750 /var/www/html/config/
 
+# Install Terraform
+sudo apt-get update && sudo apt-get install -y terraform
+
+# Initialize Terraform
+cd /var/www/html/terraform
+terraform init
+
+# Apply the Terraform configuration
+terraform apply -auto-approve
+
+# Prompt user for vCenter credentials
+read -p "Enter vSphere user: " vsphere_user
+read -sp "Enter vSphere password: " vsphere_password
+echo
+read -p "Enter vSphere server: " vsphere_server
+read -p "Enter vSphere datacenter: " vsphere_datacenter
+read -p "Enter vSphere datastore: " vsphere_datastore
+read -p "Enter vSphere compute cluster: " vsphere_compute_cluster
+read -p "Enter vSphere network: " vsphere_network
+read -p "Enter vSphere template: " vsphere_template
+
+# Update Terraform variables file with vCenter credentials
+cat <<EOF > /var/www/html/terraform/terraform.tfvars
+vsphere_user = "$vsphere_user"
+vsphere_password = "$vsphere_password"
+vsphere_server = "$vsphere_server"
+vsphere_datacenter = "$vsphere_datacenter"
+vsphere_datastore = "$vsphere_datastore"
+vsphere_compute_cluster = "$vsphere_compute_cluster"
+vsphere_network = "$vsphere_network"
+vsphere_template = "$vsphere_template"
+EOF
+
+# Apply the Terraform configuration with the updated variables
+cd /var/www/html/terraform
+terraform apply -auto-approve
+
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
 GREEN='\033[0;32m'
